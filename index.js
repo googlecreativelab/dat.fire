@@ -1,3 +1,31 @@
+import objectAssign from 'object-assign'
+
+Object.assign = Object.assign || objectAssign;
+
+
+//figure out what type of dat.Controller we are modifying
+const getControllerType = (controller)=> {
+  if (controller.__li.classList.contains('color')) {
+    return 'color'
+  } else {
+    const type = typeof controller.getValue()
+    if (type === 'number' || type === 'boolean') {
+      return type
+    } else {
+      return 'option'
+    }
+  }
+  return null
+}
+
+//map each controller type to its method handler name
+const controllerMap = {
+  'color': 'handleColorControl',
+  'boolean': 'handleBooleanControl',
+  'number': 'handleNumberControl',
+  'option': 'handleOptionControl'
+}
+
 /**
  * dem.things
  *
@@ -12,38 +40,52 @@ export default class DemThings {
    *
    * @param firebase initialized and configured instance of Firebase
    * @param gui dat.GUI instance where you added all your controllers
-   * @param controllerTypes HACK to make sure our type-checking matches the exact types being built,
-   *        see {@link #initControllers} for more information.
    * @param params optional parameters for the firebase reference paths
    */
-  constructor(firebase, gui, controllerTypes, params = null) {
+  constructor(firebase, gui, params) {
     this.firebase = firebase
     this.gui = gui
-    this.controllerTypes = controllerTypes
 
-    this.params = params || this.getDefaultParams()
+    this.params = params = Object.assign({}, DemThings.getDefaultParams(), params)
 
     this.controllers = []
     this.currentControllerIndex = -1
 
-    this.initControllers()
-    this.setupRefListener()
+
+    if(gui.__controllers.length) {
+      this.addControllers(gui.__controllers)
+    }
+
+    for (let folder in gui.__folders) {
+      let controllers = gui.__folders[folder].__controllers
+      if(controllers.length)
+        this.addControllers(controllers)
+    }
+
+    //bind `this` scope on these functions
+    ([
+      'handlePrev',
+      'handleNext',
+      'handleValueChange'
+    ]).forEach((fn)=> this[fn] = this[fn].bind(this))
+
+    const db = firebase.database()
+
+    db.ref(params.dbRef + params.prevRef)
+      .on('value', this.handlePrev)
+
+    db.ref(params.dbRef + params.nextRef)
+      .on('value', this.handleNext)
+
+    db.ref(params.dbRef + params.dialRef)
+      .on('value', this.handleValueChange)
+
 
     this.handleNext(true)
   }
 
-  setupRefListener() {
-    this.firebase.database().ref(this.params.dbRef + this.params.prevRef)
-      .on('value', (snapshot) => { this.handlePrev(snapshot.val()) })
-
-    this.firebase.database().ref(this.params.dbRef + this.params.nextRef)
-      .on('value', (snapshot) => { this.handleNext(snapshot.val()) })
-
-    this.firebase.database().ref(this.params.dbRef + this.params.dialRef)
-      .on('value', (snapshot) => { this.handleValueChange(snapshot.val()) })
-  }
-
   handlePrev(prev) {
+    prev = prev.val ? prev.val() : prev
     if (prev) {
       this.currentControllerIndex--;
 
@@ -61,6 +103,7 @@ export default class DemThings {
   }
 
   handleNext(next) {
+    next = next.val ? next.val() : next
     if (next) {
       this.currentControllerIndex++;
 
@@ -78,20 +121,14 @@ export default class DemThings {
   }
 
   handleValueChange(val) {
+    val = val.val ? val.val() : val
     if (this.controllers.length) {
-      if(this.currentController instanceof this.controllerTypes.NumberControllerSlider) {
-        this.handleNumberControlSlider(val)
-      } else if(this.currentController instanceof this.controllerTypes.BooleanController) {
-        this.handleBooleanControl(val)
-      } else if(this.currentController instanceof this.controllerTypes.ColorController) {
-        this.handleColorControl(val)
-      } else if(this.currentController instanceof this.controllerTypes.OptionController) {
-        this.handleOptionControl(val)
-      }
+      const type = getControllerType(this.currentController)
+      this[controllerMap[type]] && this[controllerMap[type]](val);
     }
   }
 
-  handleNumberControlSlider(dialValue) {
+  handleNumberControl(dialValue) {
     let val = dialValue * (this.currentController.__max - this.currentController.__min)
     this.currentController.setValue(val)
   }
@@ -112,22 +149,10 @@ export default class DemThings {
     this.currentController.__select.selectedIndex = index
   }
 
-  initControllers() {
-    if(this.gui.__controllers.length) {
-      this.addControllers(this.gui.__controllers)
-    }
-
-    for (let folder in this.gui.__folders) {
-      let controllers = this.gui.__folders[folder].__controllers
-      if(controllers.length)
-        this.addControllers(controllers)
-    }
-  }
 
   addControllers(controllers) {
-    controllers.map((controller) => {
-        this.controllers.push(controller)
-    })
+    controllers = Array.isArray(controllers) || [controllers]
+    this.controllers = this.controllers.concat(controllers)
   }
 
   removeBackground(controller) {
@@ -142,7 +167,7 @@ export default class DemThings {
     return controller.domElement.parentElement.parentElement
   }
 
-  getDefaultParams() {
+  static getDefaultParams() {
     return {
       dbRef: "things/",
       nextRef: "next",
