@@ -151,7 +151,7 @@ export default class DemThings {
 
 
   addControllers(controllers) {
-    controllers = Array.isArray(controllers) || [controllers]
+    controllers = Array.isArray(controllers) ? controllers : [controllers]
     this.controllers = this.controllers.concat(controllers)
   }
 
