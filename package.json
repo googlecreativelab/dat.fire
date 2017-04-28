@@ -1,8 +1,8 @@
 {
-  "name": "dem.things",
+  "name": "dat.fire",
   "author": "Anthony Tripaldi",
   "version": "0.1.0",
-  "description": "Hooking Android Things into firebase for control over dat.gui",
+  "description": "Connecting Firebase to dat.gui for input beyond the mouse and keyboard.",
   "main": "index.js",
   "devDependencies": {
     "babel-preset-es2015": "^6.24.0"

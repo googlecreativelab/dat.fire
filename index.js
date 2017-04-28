@@ -2,7 +2,6 @@ import objectAssign from 'object-assign'
 
 Object.assign = Object.assign || objectAssign;
 
-
 //figure out what type of dat.Controller we are modifying
 const getControllerType = (controller)=> {
   if (controller.__li.classList.contains('color')) {
@@ -27,61 +26,73 @@ const controllerMap = {
 }
 
 /**
- * dem.things
+ * Root Firebase reference that contains all the associated gui params
+ */
+const DEFAULT_ROOT_DB = "things/";
+
+/**
+ * dat.fire
  *
- * Connecting Android Things with dat.gui via Firebase Realtime Database
+ * Connecting and updating dat.gui interfaces via Firebase Realtime Database
  *
  * @author Anthony Tripaldi @ Google Creative Lab
  */
-export default class DemThings {
+export default class DatFire {
 
   /**
-   * Create an instance of dem.things, to connect Android Things with dat.gui via Firebase
+   * Create an instance of dat.fire, to connect dat.gui controllers and Firebase
    *
-   * @param firebase initialized and configured instance of Firebase
+   * @param database initialized and configured instance of Firebase.database()
    * @param gui dat.GUI instance where you added all your controllers
    * @param params optional parameters for the firebase reference paths
    */
-  constructor(firebase, gui, params) {
-    this.firebase = firebase
-    this.gui = gui
-
-    this.params = params = Object.assign({}, DemThings.getDefaultParams(), params)
+  constructor(database) {
+    this.database = database
 
     this.controllers = []
-    this.currentControllerIndex = -1
+    this.currentControllerIndex = -1;
 
-
-    if(gui.__controllers.length) {
-      this.addControllers(gui.__controllers)
-    }
-
-    for (let folder in gui.__folders) {
-      let controllers = gui.__folders[folder].__controllers
-      if(controllers.length)
-        this.addControllers(controllers)
-    }
-
-    //bind `this` scope on these functions
     ([
       'handlePrev',
       'handleNext',
       'handleValueChange'
-    ]).forEach((fn)=> this[fn] = this[fn].bind(this))
+    ]).forEach((fn) => this[fn] = this[fn].bind(this))
+  }
 
-    const db = firebase.database()
+  initSimple(gui, params) {
+    this.gui = gui
+    this.params = params = Object.assign({}, DatFire.getDefaultParams(), params)
 
-    db.ref(params.dbRef + params.prevRef)
+    if(this.gui.__controllers.length) {
+      this.addControllers(gui.__controllers)
+    }
+
+    for (let folder in this.gui.__folders) {
+      let controllers = this.gui.__folders[folder].__controllers
+      if(controllers.length)
+        this.addControllers(controllers)
+    }
+
+    this.database.ref(this.params.dbRef + this.params.prevRef)
       .on('value', this.handlePrev)
 
-    db.ref(params.dbRef + params.nextRef)
+    this.database.ref(this.params.dbRef + this.params.nextRef)
       .on('value', this.handleNext)
 
-    db.ref(params.dbRef + params.dialRef)
+    this.database.ref(this.params.dbRef + this.params.dialRef)
       .on('value', this.handleValueChange)
 
-
     this.handleNext(true)
+  }
+
+  initWithIndividualControllers(controllers, params) {
+    this.addControllers(controllers)
+    this.params = params = Object.assign({}, DatFire.getDefaultParams(), params)
+
+    controllers.forEach((ctrl) => {
+      this.database.ref(this.params.dbRef + ctrl.property)
+        .on('value', this.handleValueChange)
+    })
   }
 
   handlePrev(prev) {
@@ -121,10 +132,12 @@ export default class DemThings {
   }
 
   handleValueChange(val) {
-    val = val.val ? val.val() : val
-    if (this.controllers.length) {
+    // console.log("handleValueChange()", val.key)
+
+    if (this.controllers.length && val != null) {
+      this.currentController = this.getControllerByKey(val.key)
       const type = getControllerType(this.currentController)
-      this[controllerMap[type]] && this[controllerMap[type]](val);
+      this[controllerMap[type]] && this[controllerMap[type]](val.val())
     }
   }
 
@@ -149,10 +162,21 @@ export default class DemThings {
     this.currentController.__select.selectedIndex = index
   }
 
-
   addControllers(controllers) {
     controllers = Array.isArray(controllers) ? controllers : [controllers]
-    this.controllers = this.controllers.concat(controllers)
+    let controllersWithKeys = []
+    controllers.forEach((ctrl) => {
+      controllersWithKeys.push({'key': ctrl.property, 'controller': ctrl})
+    })
+
+    this.controllers = this.controllers.concat(controllersWithKeys)
+  }
+
+  getControllerByKey(key) {
+    for(let i = 0; i < this.controllers.length; i++) {
+      if(this.controllers[i].key == key)
+        return this.controllers[i].controller
+    }
   }
 
   removeBackground(controller) {
@@ -169,7 +193,7 @@ export default class DemThings {
 
   static getDefaultParams() {
     return {
-      dbRef: "things/",
+      dbRef: DEFAULT_ROOT_DB,
       nextRef: "next",
       prevRef: "prev",
       dialRef: "dial"
