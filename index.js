@@ -230,10 +230,7 @@ export default class DatFire {
    * Returns the default parameters for dat.fire. They are:
    * * dbRef: string - the top-level database ref in your Firebase schema.
    * * (next|prev|dial)Ref: string - the individual ref names for each of the simple controls
-<<<<<<< HEAD
    * * usePrevNext: boolean - dat.fire will only expect to use a single dial with two buttons for iterating through an arbitrarily sized list of controllers
-=======
->>>>>>> 9d353d7557257e67a33324fef06a21e6c4064038
    * * simpleGui: boolean - "Installation Mode" - whether or not we want to auto-hide dat.gui and only show items that are currently being updated.
    *
    * @returns {{dbRef: string, nextRef: string, prevRef: string, dialRef: string, simpleGui: boolean}}
