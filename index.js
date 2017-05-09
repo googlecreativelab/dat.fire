@@ -18,6 +18,10 @@ const getControllerType = (controller) => {
   }
 }
 
+const map = ( value, in_min , in_max , out_min , out_max) => {
+  return ( value - in_min ) * ( out_max - out_min ) / ( in_max - in_min ) + out_min
+}
+
 /**
  * A map of each controller type to its method handler name
  */
@@ -153,7 +157,7 @@ export default class DatFire {
 
   handleNumberControl(dialValue) {
     this.currentController.setValue(
-      this.map(dialValue, 0, 1, this.currentController.__min, this.currentController.__max)
+      map(dialValue, 0, 1, this.currentController.__min, this.currentController.__max)
     )
   }
 
@@ -220,10 +224,6 @@ export default class DatFire {
 
   getParent(controller) {
     return controller.domElement.parentElement.parentElement
-  }
-
-  map( value, in_min , in_max , out_min , out_max) {
-    return ( value - in_min ) * ( out_max - out_min ) / ( in_max - in_min ) + out_min
   }
 
   /**
