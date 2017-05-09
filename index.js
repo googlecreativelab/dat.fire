@@ -18,8 +18,8 @@ const getControllerType = (controller) => {
   }
 }
 
-const map = (value, in_min , in_max , out_min , out_max) => {
-  return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+const map = (value, inMin, inMax, outMin, outMax) => {
+  return (value - inMin) * (outMax - outMin) / (inMax - inMin) + outMin
 }
 
 /**
