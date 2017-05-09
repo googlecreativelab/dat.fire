@@ -1,6 +1,6 @@
 import objectAssign from 'object-assign'
 
-Object.assign = Object.assign || objectAssign;
+Object.assign = Object.assign || objectAssign
 
 /**
  * Helper to figure out what type of dat.Controller we are modifying
@@ -16,7 +16,6 @@ const getControllerType = (controller) => {
       return 'option'
     }
   }
-  return null
 }
 
 /**
@@ -28,11 +27,10 @@ const controllerMap = {
   'number': 'handleNumberControl',
   'option': 'handleOptionControl'
 }
-
 /**
  * Root Firebase reference that contains all the associated gui params
  */
-const DEFAULT_ROOT_DB = "things/";
+const DEFAULT_ROOT_DB = "things/"
 
 /**
  * dat.fire
@@ -46,8 +44,7 @@ export default class DatFire {
   /**
    * Create an instance of dat.fire.
    *
-   * Once created, initialize it with either {@link #initSimple(gui, params)} or
-   * {@link #initWithIndividualControllers(gui, controllers, params)}.
+   * Once created, initialize it with {@link init(gui, controllers, params)}
    *
    * @param database initialized and configured instance of Firebase.database()
    */
@@ -55,27 +52,42 @@ export default class DatFire {
     this.database = database
 
     this.controllers = []
-    this.currentControllerIndex = -1;
+    this.currentControllerIndex = -1
 
     this.handleValueChange = this.handleValueChange.bind(this)
   }
 
   /**
-   * Easiest way of using dat.fire. Just pass in your gui instance and set up a simple Firebase database.
+   * Initialize dat.fire by connecting our controllers to Firebase database References.
    *
-   * dat.fire will then assume that there are 3 inputs, previous, next, and value.
    *
-   * In our Android Things example, we have two buttons for next and prev, and a dial that controls value. dat.fire
-   * will then cycle through your dat.gui list on button press and change the value based on your dial usage.
    *
-   * @param gui your completely initialized dat.gui instance
-   * @param params optional parameters for using new reference names for the Firebase database connections.
+   * @param {dat.GUI} gui Initialized and completed dat.GUI instance. Only call this after you are finished adding controllers.
+   * @param {Array} [controllers] Optional array of specific controllers to be added to dat.fire. If not present, we'll automatically add all controllers in our passed GUI instance.
+   * @param {Object} [params] Optional parameters. See {@link #getDefaultParams()} or read above for more info.
    */
-  initSimple(gui, params) {
+  init(gui, controllers, params) {
     this.gui = gui
-    this.addControllersFromGui()
+
+    if (controllers && Array.isArray(controllers)) {
+      this.addControllers(controllers)
+    } else {
+      this.addAllControllersFromGui()
+    }
+
     this.handleParams(params)
 
+    if (this.params.usePrevNext) {
+      this.initPrevNext()
+    } else {
+      this.controllers.forEach((ctrlObj) => {
+        this.database.ref(this.params.dbRef + ctrlObj.controller.property)
+          .on('value', this.handleValueChange)
+      })
+    }
+  }
+
+  initPrevNext() {
     this.handlePrev = this.handlePrev.bind(this)
     this.handleNext = this.handleNext.bind(this)
 
@@ -89,29 +101,6 @@ export default class DatFire {
       .on('value', this.handleValueChange)
 
     this.handleNext(true)
-  }
-
-  initWithIndividualControllers(gui, controllers, params) {
-    this.gui = gui
-    this.addControllers(controllers)
-    this.handleParams(params)
-
-    controllers.forEach((ctrl) => {
-      this.database.ref(this.params.dbRef + ctrl.property)
-        .on('value', this.handleValueChange)
-    })
-  }
-
-  addControllersFromGui() {
-    if (this.gui.__controllers.length) {
-      this.addControllers(this.gui.__controllers)
-    }
-
-    for (let folder in this.gui.__folders) {
-      let controllers = this.gui.__folders[folder].__controllers
-      if (controllers.length)
-        this.addControllers(controllers)
-    }
   }
 
   handleParams(params) {
@@ -155,7 +144,7 @@ export default class DatFire {
   }
 
   handleValueChange(val) {
-    if (this.controllers.length && val != null) {
+    if (this.controllers.length && val) {
       this.currentController = this.getControllerByKey(val.key)
       const type = getControllerType(this.currentController)
       this[controllerMap[type]] && this[controllerMap[type]](val.val())
@@ -163,7 +152,8 @@ export default class DatFire {
   }
 
   handleNumberControl(dialValue) {
-    let val = dialValue * (this.currentController.__max - this.currentController.__min)
+    console.log('handleNumberControl', this.currentController.__max, this.currentController.__min)
+    let val = this.map(dialValue, 0, 1, this.currentController.__min, this.currentController.__max)
     this.currentController.setValue(val)
   }
 
@@ -175,8 +165,7 @@ export default class DatFire {
   }
 
   handleColorControl(val) {
-    if(val != null) {
-      console.log('handleColorControl()', val, this.currentController)
+    if(val) {
       // based on the code at https://github.com/dataarts/dat.gui/blob/master/src/dat/controllers/ColorController.js#L234
       // since setting value via setValue on its own doesn't do anything.
       // also need to explicitly set .s & .v since apparently, even in normal dat.gui, changing hue first doesn't
@@ -194,8 +183,19 @@ export default class DatFire {
     this.currentController.__select.selectedIndex = index
   }
 
+  addAllControllersFromGui() {
+    if (this.gui.__controllers.length) {
+      this.addControllers(this.gui.__controllers)
+    }
+
+    for (let folder in this.gui.__folders) {
+      let controllers = this.gui.__folders[folder].__controllers
+      if (controllers.length)
+        this.addControllers(controllers)
+    }
+  }
+
   addControllers(controllers) {
-    controllers = Array.isArray(controllers) ? controllers : [controllers]
     let controllersWithKeys = []
     controllers.forEach((ctrl) => {
       controllersWithKeys.push({'key': ctrl.property, 'controller': ctrl})
@@ -223,14 +223,26 @@ export default class DatFire {
     return controller.domElement.parentElement.parentElement
   }
 
+  map( value, in_min , in_max , out_min , out_max) {
+    return ( value - in_min ) * ( out_max - out_min ) / ( in_max - in_min ) + out_min
+  }
+
+  /**
+   * Returns the default parameters for dat.fire. They are:
+   * * dbRef: string - the top-level database ref in your Firebase schema.
+   * * (next|prev|dial)Ref: string - the individual ref names for each of the simple controls
+   * * simpleGui: boolean - "Installation Mode" - whether or not we want to auto-hide dat.gui and only show items that are currently being updated.
+   *
+   * @returns {{dbRef: string, nextRef: string, prevRef: string, dialRef: string, simpleGui: boolean}}
+   */
   static getDefaultParams() {
     return {
       dbRef: DEFAULT_ROOT_DB,
       nextRef: "next",
       prevRef: "prev",
       dialRef: "dial",
+      usePrevNext: false,
       simpleGui: false
     }
   }
-
 }
