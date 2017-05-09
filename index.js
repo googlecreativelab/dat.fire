@@ -64,7 +64,32 @@ export default class DatFire {
   /**
    * Initialize dat.fire by connecting our controllers to Firebase database References.
    *
+   * dat.fire has two primary ways of initializing. If no <code>controllers</code> parameter is passed, dat.fire will
+   * automatically crab all controllers from the main <code>dat.GUI</code> object, checking all sub folders in the process.
    *
+   * If you don't want to use every controller, pass an array of initialized dat.GUI.Controller's:
+   * <code>
+   *   // create controller somewhere
+   *   var guiSpeed = simulatorGui.add(settings, 'speed', 0, 3);
+   *   ...
+   *
+   *   // initialize with controllers
+   *   datFire.init(gui, [guiSpeed, ...])
+   * </code>
+   * Both methods will then create Firebase reference value listeners for each Controller.property name, so the above example
+   * will listen for a reference value change on "things/speed" since we also pre-pend a configurable root database ref.
+   *
+   * Additional parameters are available for simple controls. If you pass <code>{ "usePrevNext": true }</code> then
+   * dat.fire won't add reference listeners for every controller, but rather assumes you only have 3 inputs, next, prev, and value.
+   *
+   * For example, with Android Things, you can set up two buttons and a dial, attach them to a Firebase Database at things/next,
+   * things/prev, and things/value, and dat.fire will automatically scroll through all the possible controllers of your
+   * dat.gui instance, controlling them via one slider or dial.
+   *
+   * If you pass <code>{ "simpleGui": true }</code> dat.fire will remove dat.gui from the screen entirely, only showing
+   * the currently modified controller, ie, as you push a physical slider for speed, that will be the only controller onscreen.
+   *
+   * This is best for installations. Check out the example used at Google I/O at http://www.androidexperiments.com
    *
    * @param {dat.GUI} gui Initialized and completed dat.GUI instance. Only call this after you are finished adding controllers.
    * @param {Array} [controllers] Optional array of specific controllers to be added to dat.fire. If not present, we'll automatically add all controllers in our passed GUI instance.
@@ -101,7 +126,7 @@ export default class DatFire {
     this.database.ref(this.params.dbRef + this.params.nextRef)
       .on('value', this.handleNext)
 
-    this.database.ref(this.params.dbRef + this.params.dialRef)
+    this.database.ref(this.params.dbRef + this.params.valueRef)
       .on('value', this.handleValueChange)
 
     this.handleNext(true)
@@ -240,7 +265,7 @@ export default class DatFire {
       dbRef: DEFAULT_ROOT_DB,
       nextRef: "next",
       prevRef: "prev",
-      dialRef: "dial",
+      valueRef: "value",
       usePrevNext: false,
       simpleGui: false
     }
