@@ -194,18 +194,6 @@ export default class DatFire {
     }
   }
 
-  addAllControllersFromGui() {
-    if (this.gui.__controllers.length) {
-      this.addControllers(this.gui.__controllers)
-    }
-
-    for (let folder in this.gui.__folders) {
-      let controllers = this.gui.__folders[folder].__controllers
-      if (controllers.length)
-        this.addControllers(controllers)
-    }
-  }
-
   addControllers(controllers) {
     let mappedControllers = []
     controllers.forEach((ctrl) => {
