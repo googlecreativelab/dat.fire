@@ -93,10 +93,17 @@ export default class DatFire {
    *
    * @param {dat.GUI} gui Initialized and completed dat.GUI instance. Only call this after you are finished adding controllers.
    * @param {Array} [controllers] Optional array of specific controllers to be added to dat.fire. If not present, we'll automatically add all controllers in our passed GUI instance.
-   * @param {Object} [params] Optional parameters. See {@link #getDefaultParams()} or read above for more info.
+   * @param {Object} [params]
+   * @param {string} [params.dbRef] the top-level database ref in your Firebase schema.
+   * @param {string} [params.nextRef] firebase ref for next button
+   * @param {string} [params.prevRef] firebase ref for prev button
+   * @param {string} [params.valueRef] firebase ref for dial or slider that will update the currently selected controller
+   * @param {boolean} [params.usePrevNext] dat.fire will only expect to use a single dial with two buttons for iterating through an arbitrarily sized list of controllers
+   * @param {boolean} [params.simpleGui] "Installation Mode" - whether or not we want to auto-hide dat.gui and only show items that are currently being updated.
    */
   init(gui, controllers, params) {
     this.gui = gui
+    this.handleParams(params)
 
     if (controllers && Array.isArray(controllers)) {
       this.addControllers(controllers)
@@ -104,7 +111,6 @@ export default class DatFire {
       this.addAllControllersFromGui()
     }
 
-    this.handleParams(params)
 
     if (this.params.usePrevNext) {
       this.initPrevNext()
@@ -134,6 +140,10 @@ export default class DatFire {
 
   handleParams(params) {
     this.params = params = Object.assign({}, DatFire.getDefaultParams(), params)
+
+    if(this.params.simpleGui) {
+      this.setupSimpleGui();
+    }
   }
 
   handlePrev(prev) {
@@ -146,11 +156,11 @@ export default class DatFire {
       }
 
       if (this.currentController) {
-        this.removeBackground(this.currentController)
+        this.removeBackground(this.currentController.getParent())
       }
 
       this.currentController = this.controllers[this.currentControllerIndex]
-      this.addBackground(this.currentController)
+      this.addBackground(this.currentController.getParent())
     }
   }
 
@@ -175,6 +185,11 @@ export default class DatFire {
   handleValueChange(val) {
     if (this.controllers.length && val) {
       this.currentController = this.getControllerByKey(val.key)
+
+      if(this.params.simpleGui) {
+        this.currentController.show()
+      }
+
       const type = getControllerType(this.currentController)
       this[controllerMap[type]] && this[controllerMap[type]](val.val())
     }
@@ -226,10 +241,40 @@ export default class DatFire {
   addControllers(controllers) {
     let mappedControllers = []
     controllers.forEach((ctrl) => {
-      mappedControllers.push({'key': ctrl.property, 'controller': ctrl})
-    })
+      if(this.params.simpleGui) {
+        this.setFireTo(ctrl)
+      }
+
+      // easy parental access
+      ctrl.getParent = () => ctrl.domElement.parentElement.parentElement
+
+      mappedControllers.push({'key': ctrl.property, 'controller':ctrl})
+    }, this)
 
     this.controllers = this.controllers.concat(mappedControllers)
+  }
+
+  /**
+   * Adds additional simpleGui methods and properties to our controllers
+   */
+  setFireTo(controller) {
+    controller.timeout = -1
+
+    controller.hide = () => {
+      this.fireList.removeChild(controller.getParent())
+
+      controller.timeout = -1
+    }
+
+    controller.show = () => {
+      this.fireList.appendChild(controller.getParent())
+
+      if(controller.timeout !== -1) {
+        clearTimeout(controller.timeout)
+        controller.timeout = -1
+      }
+      controller.timeout = setTimeout(() => {controller.hide()}, 2000)
+    }
   }
 
   getControllerByKey(key) {
@@ -239,27 +284,25 @@ export default class DatFire {
     }
   }
 
-  removeBackground(controller) {
-    this.getParent(controller).style.backgroundColor = ""
+  removeBackground(parent) {
+    parent.style.backgroundColor = ""
   }
 
-  addBackground(controller) {
-    this.getParent(controller).style.backgroundColor = "#555555"
+  addBackground(parent) {
+    parent.style.backgroundColor = "#555555"
   }
 
-  getParent(controller) {
-    return controller.domElement.parentElement.parentElement
+  setupSimpleGui() {
+    this.gui.close()
+
+    // create our new list for holding things
+    this.fireList = document.createElement('ul')
+    this.gui.domElement.appendChild(this.fireList)
+
+    // get rid of close button
+    this.gui.__closeButton.style.display = 'none'
   }
 
-  /**
-   * Returns the default parameters for dat.fire. They are:
-   * * dbRef: string - the top-level database ref in your Firebase schema.
-   * * (next|prev|dial)Ref: string - the individual ref names for each of the simple controls
-   * * usePrevNext: boolean - dat.fire will only expect to use a single dial with two buttons for iterating through an arbitrarily sized list of controllers
-   * * simpleGui: boolean - "Installation Mode" - whether or not we want to auto-hide dat.gui and only show items that are currently being updated.
-   *
-   * @returns {{dbRef: string, nextRef: string, prevRef: string, dialRef: string, simpleGui: boolean}}
-   */
   static getDefaultParams() {
     return {
       dbRef: DEFAULT_ROOT_DB,
@@ -270,4 +313,5 @@ export default class DatFire {
       simpleGui: false
     }
   }
+
 }
