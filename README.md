@@ -3,7 +3,7 @@ dat.fire
 
 A simple way to connect your [dat.gui](https://github.com/dataarts/dat.gui) controllers to a [Firebase Realtime Database](https://firebase.google.com/docs/database/).
 
-[image of setup @ i/o]
+![dat.fire](https://github.com/googlecreativelab/dat.fire/raw/master/imgs/fbplusdatgui.png)
  
 usage 
 ---
