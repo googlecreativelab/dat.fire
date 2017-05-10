@@ -3,7 +3,7 @@ dat.fire
 
 A simple way to connect your [dat.gui](https://github.com/dataarts/dat.gui) controllers to a [Firebase Realtime Database](https://firebase.google.com/docs/database/).
 
-![dat.fire](https://github.com/googlecreativelab/dat.fire/raw/master/imgs/fbplusdatgui.png)
+![dat.fire](https://github.com/googlecreativelab/dat.fire/raw/master/imgs/fbplusdatgui.png =800x314)
  
 usage 
 ---
@@ -34,3 +34,11 @@ In that last example, notice that controllers array is null, which functions lik
 
 Once dat.fire has all the controllers, it will use its `property` string as the reference expected in the Firebase Database to handle value changes via a [value event](https://firebase.google.com/docs/database/web/read-and-write#listen_for_value_events). 
 
+Google I/O
+---
+
+Check out the full setup at our Experiments Tent at Google I/O this year. All four components were open sourced.
+ 
+ [image from i/o setups]
+
+The Android Experiment using Android Things is located [here](https://github.com/trippedout/things-with-firebase/) as well as a fork of The Spirit, a Chrome Experiment implementing dat.fire, located [here](https://github.com/trippedout/The-Spirit/)
