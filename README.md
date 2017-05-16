@@ -9,8 +9,8 @@ usage
 ---
 ```
 // initialize dat.fire with an initialized firebase db
-import DatFire = from 'dat.fire'
-import firebase = from 'firebase'
+import DatFire from 'dat.fire'
+import firebase from 'firebase'
 firebase.initializeApp(config)
 let datFire = new DatFire(firebase.database())
 
@@ -41,4 +41,4 @@ Check out the full setup at our Experiments Tent at Google I/O this year. All fo
  
  [image from i/o setups]
 
-The Android Experiment using Android Things is located [here](https://github.com/trippedout/things-with-firebase/) as well as a fork of The Spirit, a Chrome Experiment implementing dat.fire, located [here](https://github.com/trippedout/The-Spirit/)
+The Android Experiment using Android Things is located [here](https://github.com/googlecreativelab/things-with-firebase-at-io2017) as well as a fork of The Spirit, a Chrome Experiment implementing dat.fire, located [here](https://github.com/trippedout/The-Spirit/)

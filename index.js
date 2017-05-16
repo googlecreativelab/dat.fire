@@ -313,5 +313,4 @@ export default class DatFire {
       simpleGui: false
     }
   }
-
 }
