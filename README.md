@@ -7,7 +7,7 @@ A simple way to connect your [dat.gui](https://github.com/dataarts/dat.gui) cont
  
 usage 
 ---
-```
+```javascript
 // initialize dat.fire with an initialized firebase db
 import DatFire from 'dat.fire'
 import firebase from 'firebase'
